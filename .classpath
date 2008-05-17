@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-3.1.jar" sourcepath="lib/asm-3.1/src.zip"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-analysis-3.1.jar" sourcepath="lib/asm-3.1/src.zip"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-commons-3.1.jar"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-tree-3.1.jar" sourcepath="lib/asm-3.1/src.zip"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-util-3.1.jar"/>
+	<classpathentry kind="lib" path="lib/asm-3.1/asm-xml-3.1.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="src/resources"/>
+	<classpathentry kind="lib" path="lib/jung/collections-generic-4.01.jar"/>
+	<classpathentry kind="lib" path="lib/jung/colt-1.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/jung/concurrent-1.3.4.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-algorithms-2.0-alpha2.jar" sourcepath="/Users/pgm/Downloads/jung2-alpha2-sources Folder/jung-algorithms-2.0-alpha2-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-api-2.0-alpha2.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-graph-impl-2.0-alpha2.jar" sourcepath="/Users/pgm/Downloads/jung2-alpha2-sources Folder/jung-graph-impl-2.0-alpha2-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-io-2.0-alpha2.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-visualization-2.0-alpha2.jar" sourcepath="/Users/pgm/Downloads/jung2-alpha2-sources Folder/jung-visualization-2.0-alpha2-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jung/jung-samples-2.0-alpha2.jar" sourcepath="/Users/pgm/Downloads/jung2-alpha2-sources Folder/jung-samples-2.0-alpha2-sources.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="lib" path="lib/cglib-2.2_beta1.jar"/>
+	<classpathentry kind="output" path="build/classes"/>
+</classpath>
