@@ -28,9 +28,9 @@ public class AnalysisUtil {
 	 * the value is returned as unknown.
 	 * 
 	 * @param c the class to crawl.
-	 * @return A collection of {@link MethodAndRetValues}s
+	 * @return A collection of {@link MethodInfo}s
 	 */
-	public static List<MethodAndRetValues> getMethodsAndReturnValues(Class<?> c) {
+	public static List<MethodInfo> getMethodsAndReturnValues(Class<?> c) {
 		InputStream is = getClassAsInputStream(c);
 		ClassReader cr;
 		try {

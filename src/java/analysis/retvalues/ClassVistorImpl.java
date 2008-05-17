@@ -9,18 +9,30 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 
-import analysis.MethodAndRetValues;
+import analysis.MethodInfo;
 
 
 public class ClassVistorImpl implements ClassVisitor {
 	String className;
-	List<MethodAndRetValues> retValues = new ArrayList<MethodAndRetValues>();
+	List<MethodInfo> retValues = new ArrayList<MethodInfo>();
 
-	public void addComputedRetValues(String name, List<String> rets) {
-		retValues.add(new MethodAndRetValues(name, rets));
+	protected String getFilenameForClass() {
+		String filteredClassName = className;
+		int dollarIndex = filteredClassName.indexOf("$");
+		if(dollarIndex > 0) {
+			filteredClassName = filteredClassName.substring(0, dollarIndex);
+		}
+		
+		return filteredClassName.replace(".", "/");
+	}
+	
+	public void addComputedRetValues(String name, String descriptor, List<String> rets, int firstLine) {
+		String filename = getFilenameForClass();
+		
+		retValues.add(new MethodInfo(name, descriptor, rets, filename, firstLine));
 	}
 
-	public List<MethodAndRetValues> getRetValues() {
+	public List<MethodInfo> getRetValues() {
 		return retValues;
 	}
 
@@ -47,14 +59,14 @@ public class ClassVistorImpl implements ClassVisitor {
 	public void visitInnerClass(String arg0, String arg1, String arg2, int arg3) {
 	}
 
-	public MethodVisitor visitMethod(int access, String name, String desc,
+	public MethodVisitor visitMethod(int access, String name, String descriptor,
 			String sig, String[] exceptions) {
 
 		// ignore constructor
 		if (name.equals("<init>") || name.equals("<clinit>"))
 			return null;
 
-		return new MethodVisitorImpl(className, access, name, desc, this);
+		return new MethodVisitorImpl(className, access, name, descriptor, this);
 	}
 
 	public void visitOuterClass(String arg0, String arg1, String arg2) {

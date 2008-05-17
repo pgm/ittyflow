@@ -8,7 +8,9 @@ import java.awt.Shape;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Rectangle2D;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -17,8 +19,7 @@ import org.apache.commons.collections15.Transformer;
 import org.apache.commons.collections15.functors.ConstantTransformer;
 
 import analysis.AnalysisUtil;
-import analysis.MethodAndRetValues;
-import edu.uci.ics.jung.graph.DirectedSparseGraph;
+import analysis.MethodInfo;
 import edu.uci.ics.jung.visualization.GraphZoomScrollPane;
 import edu.uci.ics.jung.visualization.VisualizationViewer;
 import edu.uci.ics.jung.visualization.control.DefaultModalGraphMouse;
@@ -28,19 +29,10 @@ import edu.uci.ics.jung.visualization.renderers.BasicVertexLabelRenderer;
 import edu.uci.ics.jung.visualization.renderers.Renderer.VertexLabel.Position;
 import flow.Workflow;
 import flow.viz.PersistedLayout;
+import flow.viz.StateDescriptor;
+import flow.viz.WorflowGraph;
 
 public class VizMain {
-	public static class MethodEdge {
-		String name;
-		
-		public MethodEdge(String s) {
-			name = s;
-		}
-		
-		public String toString() {
-			return name;
-		}
-	}
 
 	public static AssayRunState lookupRetValue(String name) {
 		int pos = name.lastIndexOf(".");
@@ -57,49 +49,69 @@ public class VizMain {
 		return (AssayRunState)f;
 	}
 	
+	public static class MethodEdge {
+		MethodInfo info;
+		
+		public MethodEdge(MethodInfo info) {
+			this.info = info;
+		}
+		
+		public String toString() {
+			return info.getMethod();
+		}
+	}
+	
 	public static void main(String[] args) {
 		Workflow<AssayRunState, ITransitions> workflow = AssayRunWorkflowFactory.makeWorkflow();
 		
-		DirectedSparseGraph<AssayRunState,MethodEdge> g = new DirectedSparseGraph<AssayRunState, MethodEdge>();
+		WorflowGraph g = new WorflowGraph();
 
+		Map <AssayRunState, StateDescriptor> xlat = new HashMap<AssayRunState, StateDescriptor>();
+		
 		for(AssayRunState state : workflow.getStates() ) {
-			g.addVertex(state);
+			StateDescriptor desc = new StateDescriptor(state.toString());
+			xlat.put(state, desc);
+			g.addVertex(desc);
 		}
 
 		for(AssayRunState state : workflow.getStates() ) {
 			for(ITransitions t : workflow.getTransitionSets(state)) {
-				List<MethodAndRetValues> result = AnalysisUtil.getMethodsAndReturnValues(t.getClass());
-				for(MethodAndRetValues marv : result) {
+				List<MethodInfo> result = AnalysisUtil.getMethodsAndReturnValues(t.getClass());
+				for(MethodInfo marv : result) {
 					for(String retValue : marv.getRetValues() ) {
 						if(retValue == null)
 							continue;
+						
 						AssayRunState destState = lookupRetValue(retValue);
-						g.addEdge(new MethodEdge(marv.getMethod()), state, destState);
+						
+						System.out.println("adding "+xlat.get(state) + "->" + xlat.get(destState));
+						
+						g.addEdge(new MethodEdge(marv), xlat.get(state), xlat.get(destState));
 					}
 				}
 			}
 		}
 		
-		final PersistedLayout<AssayRunState, MethodEdge> layout =  new PersistedLayout<AssayRunState, MethodEdge>(g);
+		final PersistedLayout<StateDescriptor, MethodEdge> layout =  new PersistedLayout<StateDescriptor, MethodEdge>(g);
 		layout.setSize(new Dimension(300,300)); // sets the initial size of the space
 		layout.read();
 		
 		// The BasicVisualizationServer<V,E> is parameterized by the edge types
-		VisualizationViewer<AssayRunState,MethodEdge> vv = new VisualizationViewer<AssayRunState,MethodEdge>(layout);
+		VisualizationViewer<StateDescriptor,MethodEdge> vv = new VisualizationViewer<StateDescriptor,MethodEdge>(layout);
 		
 		vv.setBackground(Color.WHITE);
-		vv.getRenderContext().setVertexShapeTransformer(new Transformer<AssayRunState, Shape>() {
-			public Shape transform(AssayRunState state) {
+		vv.getRenderContext().setVertexShapeTransformer(new Transformer<StateDescriptor, Shape>() {
+			public Shape transform(StateDescriptor state) {
 				return new Rectangle2D.Float(-130,-10,260,20);
 			}
 		});
 		
-		vv.getRenderer().setVertexLabelRenderer(new BasicVertexLabelRenderer<AssayRunState,MethodEdge>(Position.CNTR));
+		vv.getRenderer().setVertexLabelRenderer(new BasicVertexLabelRenderer<StateDescriptor,MethodEdge>(Position.CNTR));
 		vv.getRenderContext().getEdgeLabelRenderer().setRotateEdgeLabels(false);
-		vv.getRenderContext().setEdgeLabelClosenessTransformer(new ConstantDirectionalEdgeValueTransformer<AssayRunState,MethodEdge>(0.5, 0.5));
+		vv.getRenderContext().setEdgeLabelClosenessTransformer(new ConstantDirectionalEdgeValueTransformer<StateDescriptor,MethodEdge>(0.5, 0.5));
 		vv.getRenderContext().setVertexFillPaintTransformer(new ConstantTransformer(new Color(255, 230, 200)));
-		vv.getRenderContext().setVertexLabelTransformer(new Transformer<AssayRunState, String>() {
-			public String transform(AssayRunState i) {
+		vv.getRenderContext().setVertexLabelTransformer(new Transformer<StateDescriptor, String>() {
+			public String transform(StateDescriptor i) {
 				return i.toString();
 			}
 		}
@@ -112,7 +124,7 @@ public class VizMain {
 			}
 		});
 		
-		vv.setPreferredSize(new Dimension(350,350)); //Sets the viewing area size
+		vv.setPreferredSize(new Dimension(800,600)); //Sets the viewing area size
 		//.setPickSupport(new RadiusPickSupport());
 		DefaultModalGraphMouse gm = new DefaultModalGraphMouse();
 		gm.setMode(ModalGraphMouse.Mode.TRANSFORMING);

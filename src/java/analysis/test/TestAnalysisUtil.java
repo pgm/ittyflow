@@ -9,21 +9,21 @@ import java.util.Map;
 import org.junit.Test;
 
 import analysis.AnalysisUtil;
-import analysis.MethodAndRetValues;
+import analysis.MethodInfo;
 
 public class TestAnalysisUtil {
 
 	@Test
 	public void testGetReturnValues() {
-		List<MethodAndRetValues> methods = AnalysisUtil.getMethodsAndReturnValues(SampleClass.class);
+		List<MethodInfo> methods = AnalysisUtil.getMethodsAndReturnValues(SampleClass.class);
 		assertEquals(4, methods.size());
 		
-		Map<String, MethodAndRetValues> map = new HashMap<String, MethodAndRetValues>();
-		for(MethodAndRetValues method : methods) {
+		Map<String, MethodInfo> map = new HashMap<String, MethodInfo>();
+		for(MethodInfo method : methods) {
 			map.put(method.getMethod(), method);
 		}
 		
-		MethodAndRetValues method = map.get("returnsOneValue");
+		MethodInfo method = map.get("returnsOneValue");
 		assertHasReturnValues(method, new String[] {"value1"});
 		
 		method = map.get("returnsOneOfTwoValues");
@@ -36,14 +36,14 @@ public class TestAnalysisUtil {
 		assertHasReturnValues(method, new String[] {"value1", "unknown"});
 	}
 
-	public void assertHasReturnValues(MethodAndRetValues method, String [] values) {
+	public void assertHasReturnValues(MethodInfo method, String [] values) {
 		for(String value : values) {
 			assertHasReturnValue(method, value);
 		}
 		assertEquals(values.length, method.getRetValues().size()) ;
 	}
 	
-	public void assertHasReturnValue(MethodAndRetValues method, String value) {
+	public void assertHasReturnValue(MethodInfo method, String value) {
 		for(String curValue : method.getRetValues()) {
 			if(curValue == null || value == null) {
 				if (curValue == null && value == null)
