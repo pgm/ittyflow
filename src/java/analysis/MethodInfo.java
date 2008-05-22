@@ -22,7 +22,7 @@ public class MethodInfo {
 		parameterTypes = new String[types.length];
 		int i = 0;
 		for(Type type : types) {
-			parameterTypes[i++] = type.toString();
+			parameterTypes[i++] = type.getClassName();
 		}
 	}
 

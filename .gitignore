@@ -1,0 +1,6 @@
+.*
+*.ser
+
+!.project
+!.classpath
+!.gitignore

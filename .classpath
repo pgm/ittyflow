@@ -21,5 +21,14 @@
 	<classpathentry kind="lib" path="lib/jung/jung-samples-2.0-alpha2.jar" sourcepath="/Users/pgm/Downloads/jung2-alpha2-sources Folder/jung-samples-2.0-alpha2-sources.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="lib/cglib-2.2_beta1.jar"/>
+	<classpathentry kind="lib" path="lib/stripes/cos.jar"/>
+	<classpathentry kind="lib" path="lib/stripes/stripes.jar"/>
+	<classpathentry kind="lib" path="lib/jetty/jetty-6.1.9.jar" sourcepath="/Users/pgm/Downloads/jetty-6.1.9-src.zip"/>
+	<classpathentry kind="lib" path="lib/jetty/jetty-util-6.1.9.jar"/>
+	<classpathentry kind="lib" path="lib/jetty/servlet-api-2.5-6.1.9.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/jetty/jsp-2.1/core-3.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/jetty/jsp-2.1/jsp-2.1.jar"/>
+	<classpathentry kind="lib" path="lib/jetty/jsp-2.1/jsp-api-2.1.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

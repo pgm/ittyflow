@@ -23,7 +23,7 @@ public class ClassVistorImpl implements ClassVisitor {
 			filteredClassName = filteredClassName.substring(0, dollarIndex);
 		}
 		
-		return filteredClassName.replace(".", "/");
+		return filteredClassName.replace(".", "/")+".java";
 	}
 	
 	public void addComputedRetValues(String name, String descriptor, List<String> rets, int firstLine) {

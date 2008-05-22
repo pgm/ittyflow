@@ -1,4 +1,4 @@
-package sample;
+package flow.viz;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -18,6 +18,10 @@ import javax.swing.JPanel;
 import org.apache.commons.collections15.Transformer;
 import org.apache.commons.collections15.functors.ConstantTransformer;
 
+import sample.AssayRunState;
+import sample.AssayRunWorkflowFactory;
+import sample.ITransitions;
+
 import analysis.AnalysisUtil;
 import analysis.MethodInfo;
 import edu.uci.ics.jung.visualization.GraphZoomScrollPane;
@@ -28,9 +32,6 @@ import edu.uci.ics.jung.visualization.decorators.ConstantDirectionalEdgeValueTra
 import edu.uci.ics.jung.visualization.renderers.BasicVertexLabelRenderer;
 import edu.uci.ics.jung.visualization.renderers.Renderer.VertexLabel.Position;
 import flow.Workflow;
-import flow.viz.PersistedLayout;
-import flow.viz.StateDescriptor;
-import flow.viz.WorflowGraph;
 
 public class VizMain {
 
@@ -122,6 +123,30 @@ public class VizMain {
 			public String transform(MethodEdge i) {
 				return i.toString();
 			}
+		});
+		
+		vv.setEdgeToolTipTransformer(new Transformer<MethodEdge,String>() {
+
+			public String transform(MethodEdge edge) {
+				StringBuilder sb = new StringBuilder();
+				
+				sb.append(edge.info.getFilename())
+				  .append("(")
+				  .append(edge.info.getFirstLine())
+				  .append("):\n")
+				  .append(edge.info.getMethod())
+				  .append("(");
+				boolean first = true;
+				for(String param : edge.info.getParameterTypes()) {
+					if(!first)
+						sb.append(", ");
+					first = false;
+					sb.append(param);
+				}
+				sb.append(")");
+				return sb.toString();
+			}
+			
 		});
 		
 		vv.setPreferredSize(new Dimension(800,600)); //Sets the viewing area size
