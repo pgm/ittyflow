@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src/java"/>
+	<classpathentry kind="src" path="sample_src"/>
+	<classpathentry kind="src" path="test_src/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/asm-3.1/asm-3.1.jar" sourcepath="lib/asm-3.1/src.zip"/>
 	<classpathentry kind="lib" path="lib/asm-3.1/asm-analysis-3.1.jar" sourcepath="lib/asm-3.1/src.zip"/>
@@ -22,7 +24,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="lib/cglib-2.2_beta1.jar"/>
 	<classpathentry kind="lib" path="lib/stripes/cos.jar"/>
-	<classpathentry kind="lib" path="lib/stripes/stripes.jar"/>
+	<classpathentry kind="lib" path="lib/stripes/stripes.jar" sourcepath="/Users/pgm/Downloads/stripes-1.5b1/src"/>
 	<classpathentry kind="lib" path="lib/jetty/jetty-6.1.9.jar" sourcepath="/Users/pgm/Downloads/jetty-6.1.9-src.zip"/>
 	<classpathentry kind="lib" path="lib/jetty/jetty-util-6.1.9.jar"/>
 	<classpathentry kind="lib" path="lib/jetty/servlet-api-2.5-6.1.9.jar"/>
