@@ -1,9 +1,9 @@
-package sample;
+package sample.simple;
 
 
 import org.apache.log4j.Logger;
 
-import com.github.ittyflow.HasWaitState;
+import com.github.ittyflow.Execution;
 import com.github.ittyflow.Workflow;
 
 
@@ -49,7 +49,7 @@ public class Main {
 		public WaitState signalAdvance(SampleTask task);
 	}
 	
-	public static class SampleTask implements HasWaitState<WaitState> {
+	public static class SampleTask implements Execution<WaitState> {
 		WaitState waitState;
 		
 		public SampleTask(WaitState initialState) {
@@ -88,7 +88,7 @@ public class Main {
 		TransitionSet gotoStateS3 = new GotoState(s3);
 		TransitionSet gotoStateS4 = new GotoState(s4);
 		
-		Workflow<WaitState, TransitionSet> w = new Workflow<WaitState, TransitionSet>(SampleTask.class, TransitionSet.class);
+		Workflow<WaitState, TransitionSet> w = new Workflow<WaitState, TransitionSet>(SampleTask.class, TransitionSet.class, new WaitState[] {s1, s2, s3, s4} );
 		w.addListener(s1,gotoStateS2);
 		w.addListener(s2,gotoStateS3);
 		w.addListener(s3,gotoStateS4);

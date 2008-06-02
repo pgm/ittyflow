@@ -8,15 +8,16 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.github.ittyflow.analysis.AnalysisUtil;
+import com.github.ittyflow.analysis.AsmClassIntrospector;
 import com.github.ittyflow.analysis.MethodInfo;
+import com.github.ittyflow.analysis.ParameterTypeReader;
 
 
 public class TestAnalysisUtil {
 
 	@Test
 	public void testGetReturnValues() {
-		List<MethodInfo> methods = AnalysisUtil.getMethodsAndReturnValues(SampleClass.class);
+		List<MethodInfo> methods = AsmClassIntrospector.getMethodsAndReturnValues(SampleClass.class);
 		assertEquals(4, methods.size());
 		
 		Map<String, MethodInfo> map = new HashMap<String, MethodInfo>();
@@ -41,7 +42,7 @@ public class TestAnalysisUtil {
 		for(String value : values) {
 			assertHasReturnValue(method, value);
 		}
-		assertEquals(values.length, method.getRetValues().size()) ;
+		assertEquals(values.length, method.getRetValues().length) ;
 	}
 	
 	public void assertHasReturnValue(MethodInfo method, String value) {
@@ -57,5 +58,10 @@ public class TestAnalysisUtil {
 			}
 		}
 		throw new RuntimeException("Did not find value "+value);
+	}
+	
+	@Test
+	public void testGetParameterNames() {
+		ParameterTypeReader.getMethodParameters(SampleClass.class);
 	}
 }

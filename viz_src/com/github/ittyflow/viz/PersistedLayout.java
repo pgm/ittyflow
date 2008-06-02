@@ -7,11 +7,17 @@ import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import edu.uci.ics.jung.algorithms.layout.StaticLayout;
 import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.util.Pair;
 
 public class PersistedLayout<V,E> extends StaticLayout<V,E>{
 	
@@ -20,9 +26,72 @@ public class PersistedLayout<V,E> extends StaticLayout<V,E>{
 	double maxX = 0.0;
 	double minY = 0.0;
 	double maxY = 0.0;
+
+	List<Collection<V>> rankedVertices;
 	
 	public PersistedLayout(Graph<V, E> graph) {
 		super(graph);
+		
+		rankedVertices = groupIntoRanks();
+		
+		int y = 100;
+		for(Collection<V> rank : rankedVertices) {
+			int x = 300;
+			for(V v:rank) {
+				setLocation(v, x, y);
+				x+= 400;
+			}
+			y += 100;
+		}
+	}
+	
+	protected Collection<V> getRoots() {
+		Set<V> roots = new HashSet<V>();
+
+		roots.addAll(getGraph().getVertices());
+		
+		for(E edge : getGraph().getEdges()) {
+			Pair<V> pair = getGraph().getEndpoints(edge);
+			roots.remove(pair.getSecond());
+		}
+		
+		return roots;
+	}
+
+	protected void addToRank(Set<V> seen, List<Collection<V>> ranks, int index, Collection<V>vs) {
+		seen.addAll(vs);
+		
+		Collection<V> rank;
+		if(ranks.size() <= index) {
+			rank = new ArrayList<V>();
+			ranks.add(rank);
+		} else {
+			rank = ranks.get(index);
+		}
+		rank.addAll(vs);
+		
+		for(V v : vs) {
+			Set<V> next = new HashSet<V>();
+			for(E oe : getGraph().getOutEdges(v)) {
+				V ov = getGraph().getEndpoints(oe).getSecond();
+				if(seen.contains(ov))
+					continue;
+				next.add(ov);
+			}
+			
+			addToRank(seen, ranks, index+1, next);
+		}
+	}
+	
+	protected List<Collection<V>> groupIntoRanks() {
+		Set<V> seen = new HashSet<V>();
+		
+		Collection<V> roots = getRoots();
+		List<Collection<V>> ranks = new ArrayList<Collection<V>>();
+
+		addToRank(seen, ranks, 0, roots);
+		
+		return ranks;
 	}
 	
 	public String getFilename() {

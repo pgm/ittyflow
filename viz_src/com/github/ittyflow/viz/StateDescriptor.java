@@ -1,4 +1,4 @@
-package com.github.ittyflow;
+package com.github.ittyflow.viz;
 
 public class StateDescriptor {
 	final String text;

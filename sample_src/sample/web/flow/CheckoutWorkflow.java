@@ -9,7 +9,7 @@ import sample.web.mockdb.Room;
 public class CheckoutWorkflow extends Workflow<CheckoutState, ITransitions> {
 
 	public CheckoutWorkflow() {
-		super(CheckoutExecution.class, ITransitions.class);
+		super(CheckoutExecution.class, ITransitions.class, CheckoutState.values());
 		
 		addListener(CheckoutState.WAITING_FOR_HOTEL_SELECTION, new Transitions() {
 			public CheckoutState choseHotel(CheckoutExecution task, Hotel hotel) {

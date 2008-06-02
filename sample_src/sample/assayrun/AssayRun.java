@@ -1,8 +1,8 @@
-package sample;
+package sample.assayrun;
 
-import com.github.ittyflow.HasWaitState;
+import com.github.ittyflow.Execution;
 
-public class AssayRun implements HasWaitState<AssayRunState> {
+public class AssayRun implements Execution<AssayRunState> {
 	private AssayRunState waitState = AssayRunState.Waiting_For_Map_Groups;
 
 	public AssayRunState getWaitState() {

@@ -1,4 +1,4 @@
-package sample;
+package sample.assayrun;
 
 import com.github.ittyflow.Workflow;
 
@@ -6,7 +6,7 @@ public class AssayRunWorkflowFactory {
 	
 	public static Workflow<AssayRunState, ITransitions> makeWorkflow() {
 		Workflow<AssayRunState, ITransitions> workflow = 
-			new Workflow<AssayRunState, ITransitions>(AssayRun.class, ITransitions.class);
+			new Workflow<AssayRunState, ITransitions>(AssayRun.class, ITransitions.class, AssayRunState.values());
 		
 		workflow.addListener(AssayRunState.Waiting_For_Map_Groups, new Transitions() {
 			public AssayRunState userSelectedPlateMaps(AssayRun assayRun, 

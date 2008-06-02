@@ -1,5 +1,6 @@
 package com.github.ittyflow;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -12,14 +13,62 @@ import java.util.Set;
 import com.github.ittyflow.annotations.AbstractEvent;
 
 public class Workflow<W,T> {
-	final Class<T> transitionClass;
-	final Class<? extends HasWaitState<W>> executionClass;
-	final Class<?> waitStateClass;
+	public static final String ENTERED_EVENT_NAME = "entered";
 	
-	Map<String, Method> allMethodsByName = new HashMap<String, Method>();
-	Map<String,W> stateByName = new HashMap<String, W>();
-	Map<W, TransitionDispatch<T>> map = new HashMap<W, TransitionDispatch<T>>();
+	final Class<T> transitionClass;
+	final Class<? extends Execution<W>> executionClass;
+	final Class<?> waitStateClass;
+	final W waitStates[];
+	
+	protected Map<String, Method> allMethodsByName = new HashMap<String, Method>();
+	protected Map<String,W> stateByName = new HashMap<String, W>();
+	protected Map<W, TransitionDispatch<T>> dispatchPerState = new HashMap<W, TransitionDispatch<T>>();
 
+	public Workflow(Class<? extends Execution<W>> executionClass, Class<T> transitionClass, W [] waitStates) {
+		this.waitStates = waitStates;
+		this.transitionClass = transitionClass;
+		this.executionClass = executionClass;
+		
+		buildStateIndex();
+		
+		try {
+			this.waitStateClass = executionClass.getMethod("getWaitState").getReturnType();
+		} catch (Exception ex) {
+			throw new RuntimeException("Could not get the return type of getWaitState from the class "+executionClass.getName(), ex);
+		}
+		
+		for(Method method : this.transitionClass.getMethods()) {
+			String methodName = method.getName();
+			if(allMethodsByName.containsKey(methodName)) {
+				throw new RuntimeException("Two transitions with the same name are not allowed.  In this class at least two methods with the same name ("+methodName+") were found");
+			}
+
+			// make sure the signature is right for an event
+			// must return a wait state
+			if(!method.getReturnType().equals(waitStateClass)) {
+				continue;
+			}
+
+			// and the first parameter must be the execution object
+			Class<?>parameterTypes[] = method.getParameterTypes();
+			if(parameterTypes.length < 1 || !parameterTypes[0].equals(executionClass)) {
+				continue;
+			}
+			
+			allMethodsByName.put(methodName, method);
+		}
+	}
+	
+	protected void buildStateIndex() {
+		for(W state : waitStates) {
+			String name = state.toString();
+			if(stateByName.containsKey(name)) {
+				throw new RuntimeException("Workflow contains multiple states whose toString method returned "+name);
+			}
+			stateByName.put(name, state);
+		}
+	}
+	
 	@SuppressWarnings("serial")
 	static class TransitionAlreadyDefinedException extends RuntimeException {
 	}
@@ -61,45 +110,12 @@ public class Workflow<W,T> {
 		}
 	}
 	
-	public static final String ENTERED_EVENT_NAME = "entered";
-	
-	public Workflow(Class<? extends HasWaitState<W>> wClass, Class<T> transitionClass) {
-		this.transitionClass = transitionClass;
-		this.executionClass = wClass;
-		try {
-			this.waitStateClass = executionClass.getMethod("getWaitState").getReturnType();
-		} catch (Exception ex) {
-			throw new RuntimeException("Could not get the return type of getWaitState from the class "+executionClass.getName(), ex);
-		}
-		
-		for(Method method : this.transitionClass.getMethods()) {
-			String methodName = method.getName();
-			if(allMethodsByName.containsKey(methodName)) {
-				throw new RuntimeException("Two transitions with the same name are not allowed.  In this class at least two methods with the same name ("+methodName+") were found");
-			}
-
-			// make sure the signature is right for an event
-			// must return a wait state
-			if(!method.getReturnType().equals(waitStateClass)) {
-				continue;
-			}
-
-			// and the first parameter must be the execution object
-			Class<?>parameterTypes[] = method.getParameterTypes();
-			if(parameterTypes.length < 1 || !parameterTypes[0].equals(wClass)) {
-				continue;
-			}
-			
-			allMethodsByName.put(methodName, method);
-		}
-	}
-	
 	public Collection<TargetedMethod<T>> getTransitionsForState(W state) {
-		return map.get(state).getTransitions();
+		return dispatchPerState.get(state).getTransitions();
 	}
 	
 	public void addTerminalState(W state) {
-		map.put(state, new TransitionDispatch<T>());
+		dispatchPerState.put(state, new TransitionDispatch<T>());
 	}
 
 	public void addListener(W state, T transitionSet) {
@@ -128,10 +144,10 @@ public class Workflow<W,T> {
 	}
 	
 	public void addListener(W state, T transitions, String[] allowedTransitions) {
-		TransitionDispatch<T> dispatch = map.get(state);
+		TransitionDispatch<T> dispatch = dispatchPerState.get(state);
 		if(dispatch == null) {
 			dispatch = new TransitionDispatch<T>();
-			map.put(state, dispatch);
+			dispatchPerState.put(state, dispatch);
 		}
 		for(String methodName : allowedTransitions) {
 			Method method = this.allMethodsByName.get(methodName);
@@ -143,23 +159,18 @@ public class Workflow<W,T> {
 		}
 	}
 	
-	public void validate() {
-		// walk through the transitions for each state and make sure that no
-		// transition is handled by more then one handler
-	}
-	
-	public TransitionDispatch<T> getDispatcher(W state) {
-		if(!map.containsKey(state))
+	protected TransitionDispatch<T> getDispatcher(W state) {
+		if(!dispatchPerState.containsKey(state))
 			throw new RuntimeException("Workflow does not contain "+state);
-		return map.get(state);
+		return dispatchPerState.get(state);
 	}
 
 	public Collection<W> getStates() {
-		return map.keySet();
+		return dispatchPerState.keySet();
 	}
 	
 	@SuppressWarnings(value={"unchecked"})
-	public T signal(final HasWaitState<W> taskState) {
+	public T signal(final Execution<W> taskState) {
 
 		InvocationHandler handler = new InvocationHandler() {
 			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) {
@@ -170,7 +181,7 @@ public class Workflow<W,T> {
 				}
 				
 				TransitionDispatch dispatch = getDispatcher(state);
-				TargetedMethod transitionMethod = dispatch.getMethod(methodName);
+				final TargetedMethod transitionMethod = dispatch.getMethod(methodName);
 				if(transitionMethod == null) {
 					if(mustExist) {
 						throw new RuntimeException("could not find "+methodName+" with parameters "+parameterTypes);
@@ -179,11 +190,24 @@ public class Workflow<W,T> {
 					}
 				}
 				
-				try {
-					return (W)transitionMethod.getMethod().invoke(transitionMethod.getTarget(), parameters);
-				} catch (Exception ex) {
-					throw new RuntimeException("Could not execute "+transitionMethod, ex);
-				}
+				final Object _target = transitionMethod.getTarget();
+				final Object [] _parameters = parameters;
+				final Object [] retResult = new Object[1];
+				
+				Runnable cont = new Runnable() {
+					public void run() {
+						try {
+							retResult[0] = transitionMethod.getMethod().invoke(_target, _parameters);
+						} catch (Exception ex) {
+							throw new RuntimeException("Could not execute "+transitionMethod, ex);
+						}
+					}
+				};
+				
+				// execute signal within interceptors
+				signalInterceptor.intercept(cont);
+
+				return (W)retResult[0];
 			}
 			
 			public Object invoke(Object proxy, Method method, Object[] args)
@@ -216,4 +240,38 @@ public class Workflow<W,T> {
 
 		return newProxyInstance;
 	}
+	
+	public static class SerializableEdges implements Serializable {
+		private static final long serialVersionUID = 1562709226833023689L;
+
+		String method;
+		String fromState;
+		String toState;
+	}
+	
+	public Collection<SerializableEdges> getSummary() {
+		throw new RuntimeException("unimp");
+	}
+	
+	public void addInterceptor(final Interceptor interceptor) {
+		final Interceptor innerInterceptor = signalInterceptor;
+		
+		signalInterceptor = new Interceptor() {
+			public void intercept(final Runnable continuation) {
+				Runnable innerRunnable = new Runnable() {
+					public void run() {
+						innerInterceptor.intercept(continuation);
+					}
+				};
+				interceptor.intercept(innerRunnable);
+			}
+		};
+	}
+	
+	Interceptor signalInterceptor = new Interceptor() {
+		public void intercept(Runnable continuation) {
+			continuation.run();
+		}
+		
+	};
 }

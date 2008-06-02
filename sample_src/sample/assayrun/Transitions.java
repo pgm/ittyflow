@@ -1,4 +1,4 @@
-package sample;
+package sample.assayrun;
 
 import com.github.ittyflow.InvalidEvent;
 import com.github.ittyflow.annotations.AbstractEvent;

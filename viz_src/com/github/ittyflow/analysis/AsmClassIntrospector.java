@@ -1,5 +1,6 @@
 package com.github.ittyflow.analysis;
 
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.SoftReference;
@@ -9,17 +10,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Type;
 
+import com.github.ittyflow.TransitionsTo;
 import com.github.ittyflow.analysis.retvalues.ClassVistorImpl;
 
 
 
-public class AnalysisUtil {
+public class AsmClassIntrospector  {
 	private static String getPathToClass(Class <?> c) {
 		return c.getName().replace(".", "/")+".class";
 	}
 	
-	private static InputStream getClassAsInputStream(Class <?> c) {
+	public static InputStream getClassAsInputStream(Class <?> c) {
 		String classPath = getPathToClass(c);
 		InputStream is = c.getClassLoader().getResourceAsStream(classPath);
 		return is;
@@ -50,9 +53,10 @@ public class AnalysisUtil {
 		return v.getRetValues();
 	}
 
-	static SoftReference<Map<Class<?>,List<MethodInfo>>> classCache = new SoftReference<Map<Class<?>,List<MethodInfo>>>(null);
 	
-	public static synchronized List<MethodInfo> getMethodsAndReturnValuesAndCache(Class<?> c) {
+	SoftReference<Map<Class<?>,List<MethodInfo>>> classCache = new SoftReference<Map<Class<?>,List<MethodInfo>>>(null);
+	
+	public synchronized List<MethodInfo> getMethodsAndReturnValuesAndCache(Class<?> c) {
 		Map<Class<?>,List<MethodInfo>> _classCache = classCache.get();
 		if(_classCache == null) {
 			_classCache = new HashMap<Class<?>,List<MethodInfo>>();
@@ -66,7 +70,30 @@ public class AnalysisUtil {
 		return info;
 	}
 	
-	public static MethodInfo getMethodInfo(Class<?> c, Method method) {
+	public static MethodInfo getMethodInfoBasedOnAnnotation(Class<?> c, Method method) {
+		for(Method classMethod : c.getMethods()) {
+			if(classMethod.getName().equals(method.getName())) {
+				TransitionsTo transitions = classMethod.getAnnotation(TransitionsTo.class);
+				if(transitions == null)
+					return null;
+
+				Class<?> parameterTypes[] = method.getParameterTypes();
+				String parameterTypesAsStrings [] = new String[parameterTypes.length]; 
+				for(int i=0;i<parameterTypes.length;i++) {
+					parameterTypesAsStrings[i] = parameterTypes[i].getName();
+				}
+				
+				return new MethodInfo(method.getName(), parameterTypesAsStrings, transitions.waitStates());
+			}
+		}
+		throw new RuntimeException("no "+method.getName()+" in "+c.getName());
+	}
+	
+	public MethodInfo getMethodInfo(Class<?> c, Method method) {
+		MethodInfo mi = getMethodInfoBasedOnAnnotation(c, method);
+		if(mi != null)
+			return mi;
+		
 		List<MethodInfo> all = getMethodsAndReturnValuesAndCache(c);
 		for(MethodInfo methodInfo : all) {
 			if(methodInfo.getMethod().equals(method.getName()))
@@ -74,4 +101,15 @@ public class AnalysisUtil {
 		}
 		throw new RuntimeException("no "+method.getName()+" in "+c.getName());
 	}
+	
+	public static String [] getParameterTypes(String descriptor) {
+		Type [] types = Type.getArgumentTypes(descriptor);
+		String [] parameterTypes = new String[types.length];
+		int i = 0;
+		for(Type type : types) {
+			parameterTypes[i++] = type.getClassName();
+		}
+		return parameterTypes;
+	}
+
 }

@@ -16,7 +16,7 @@ public class SampleClass {
 		}
 	}
 	
-	public Object returnsValueOrNull(boolean which) {
+	public Object returnsValueOrNull(boolean which, String alpha) {
 		if(which) {
 			return value1;
 		} else {

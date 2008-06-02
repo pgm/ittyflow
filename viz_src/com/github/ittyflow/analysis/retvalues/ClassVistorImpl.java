@@ -9,6 +9,7 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 
+import com.github.ittyflow.analysis.AsmClassIntrospector;
 import com.github.ittyflow.analysis.MethodInfo;
 
 
@@ -31,7 +32,7 @@ public class ClassVistorImpl implements ClassVisitor {
 	public void addComputedRetValues(String name, String descriptor, List<String> rets, int firstLine) {
 		String filename = getFilenameForClass();
 		
-		retValues.add(new MethodInfo(name, descriptor, rets, filename, firstLine));
+		retValues.add(new MethodInfo(name, AsmClassIntrospector.getParameterTypes(descriptor), rets.toArray(new String[rets.size()]), filename, firstLine));
 	}
 
 	public List<MethodInfo> getRetValues() {

@@ -1,6 +1,6 @@
 package com.github.ittyflow;
 
-public interface HasWaitState<W> {
+public interface Execution<W> {
 	public W getWaitState();
 	public void setWaitState(W state);
 }

@@ -1,10 +1,10 @@
 package sample.web.mockdb;
 
-import com.github.ittyflow.HasWaitState;
+import com.github.ittyflow.Execution;
 
 import sample.web.flow.CheckoutState;
 
-public class CheckoutExecution extends DbEntity implements HasWaitState<CheckoutState>{
+public class CheckoutExecution extends DbEntity implements Execution<CheckoutState>{
 
 	CheckoutState waitState = CheckoutState.WAITING_FOR_HOTEL_SELECTION;
 	Hotel hotel = null;

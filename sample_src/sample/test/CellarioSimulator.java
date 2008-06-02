@@ -2,10 +2,10 @@ package sample.test;
 
 import com.github.ittyflow.Workflow;
 
-import sample.AssayRun;
-import sample.AssayRunState;
-import sample.AssayRunWorkflowFactory;
-import sample.ITransitions;
+import sample.assayrun.AssayRun;
+import sample.assayrun.AssayRunState;
+import sample.assayrun.AssayRunWorkflowFactory;
+import sample.assayrun.ITransitions;
 
 public class CellarioSimulator {
 	Workflow<AssayRunState, ITransitions> wf = AssayRunWorkflowFactory.makeWorkflow();
