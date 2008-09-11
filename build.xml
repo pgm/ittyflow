@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="junit-dist" default="jar" basedir=".">
+<target name="compile">
+
+	<path id="classpath">
+		<fileset dir="lib">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>	
+
+	<javac srcdir="src" classpathref="classpath" source="1.5"
+		deprecation="on" optimize="off" debug="on"
+		destdir="build/classes" />	
+</target>
+
+<target name="jar" depends="compile">		
+	<mkdir dir="build"/>
+	<delete file="build/ittyflow.jar" failonerror="false"/>
+
+	<jar basedir="build/classes" destfile="build/ittyflow.jar">	
+		<include name="**/*"/>			
+		<exclude name="**/test/**/*"/>
+	</jar>	
+</target>
+
+</project>

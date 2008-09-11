@@ -19,12 +19,17 @@ public class Workflow<W,T> {
 	final Class<? extends Execution<W>> executionClass;
 	final Class<?> waitStateClass;
 	final W waitStates[];
+	final Set<W> undefinedWaitStates = new HashSet<W>();
 	
 	protected Map<String, Method> allMethodsByName = new HashMap<String, Method>();
 	protected Map<String,W> stateByName = new HashMap<String, W>();
 	protected Map<W, TransitionDispatch<T>> dispatchPerState = new HashMap<W, TransitionDispatch<T>>();
 
 	public Workflow(Class<? extends Execution<W>> executionClass, Class<T> transitionClass, W [] waitStates) {
+		for(W waitState : waitStates) {
+			this.undefinedWaitStates.add(waitState);
+		}
+		
 		this.waitStates = waitStates;
 		this.transitionClass = transitionClass;
 		this.executionClass = executionClass;
@@ -38,15 +43,22 @@ public class Workflow<W,T> {
 		}
 		
 		for(Method method : this.transitionClass.getMethods()) {
-			String methodName = method.getName();
-			if(allMethodsByName.containsKey(methodName)) {
-				throw new RuntimeException("Two transitions with the same name are not allowed.  In this class at least two methods with the same name ("+methodName+") were found");
-			}
-
 			// make sure the signature is right for an event
-			// must return a wait state
+			// must return a wait state.   
 			if(!method.getReturnType().equals(waitStateClass)) {
 				continue;
+			}
+			
+			// skip any methods that were created from erasure or other
+			// compilation processes
+			if(method.isSynthetic()) {
+				continue;
+			}
+
+			String methodName = method.getName();
+			if(allMethodsByName.containsKey(methodName)) {
+				throw new RuntimeException("Two transitions with the same name are not allowed.  In class "+transitionClass.getName()+
+						" there at least two methods with the same name ("+methodName+").");
 			}
 
 			// and the first parameter must be the execution object
@@ -115,10 +127,14 @@ public class Workflow<W,T> {
 	}
 	
 	public void addTerminalState(W state) {
+		this.undefinedWaitStates.remove(state);
+
 		dispatchPerState.put(state, new TransitionDispatch<T>());
 	}
 
 	public void addListener(W state, T transitionSet) {
+		this.undefinedWaitStates.remove(state);
+		
 		Set <String> methodNames = new HashSet<String>();
 		Class<?> clazz = transitionSet.getClass();
 
@@ -161,7 +177,7 @@ public class Workflow<W,T> {
 	
 	protected TransitionDispatch<T> getDispatcher(W state) {
 		if(!dispatchPerState.containsKey(state))
-			throw new RuntimeException("Workflow does not contain "+state);
+			throw new RuntimeException("Workflow does not contain state "+state);
 		return dispatchPerState.get(state);
 	}
 
@@ -171,10 +187,14 @@ public class Workflow<W,T> {
 	
 	@SuppressWarnings(value={"unchecked"})
 	public T signal(final Execution<W> taskState) {
+		// check to make sure the definition of this workflow is complete
+		if(this.undefinedWaitStates.size() > 0) {
+			throw new RuntimeException("Workflow definition is incomplete.  The following states are undefined: "+this.undefinedWaitStates+".  There should be a call to addTerminalState() or addListener() for each state.");
+		}
 
 		InvocationHandler handler = new InvocationHandler() {
 			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) {
-				W state = taskState.getWaitState();
+				final W state = taskState.getWaitState();
 				
 				if(state == null) {
 					throw new RuntimeException("wait state cannot be null");
@@ -199,40 +219,49 @@ public class Workflow<W,T> {
 						try {
 							retResult[0] = transitionMethod.getMethod().invoke(_target, _parameters);
 						} catch (Exception ex) {
-							throw new RuntimeException("Could not execute "+transitionMethod, ex);
+							throw new RuntimeException("Could not execute "+transitionMethod+". (current state = "+state+")", ex);
 						}
 					}
 				};
 				
 				// execute signal within interceptors
-				signalInterceptor.intercept(cont);
-
+				cont.run();
+				
 				return (W)retResult[0];
 			}
 			
-			public Object invoke(Object proxy, Method method, Object[] args)
+			public Object invoke(final Object proxy, final Method method, final Object[] args)
 					throws Throwable {
+				final Object retBuffer[] = new Object[1];
 				
 				if ( args[0] != null ) {
 					throw new RuntimeException("You cannot provide a state to modify.  This will be automatically populated.  You must provide null as the first argument");
 				}
 
-				// copy the task state as the first parameter
-				args[0] = taskState;
+				Runnable cont = new Runnable() {
+					public void run() {
+						// copy the task state as the first parameter
+						args[0] = taskState;
 
-				W returnedState = invokeHandler(method.getName(), method.getParameterTypes(), args, true);
+						W returnedState = invokeHandler(method.getName(), method.getParameterTypes(), args, true);
+						
+						// if we got a new state
+						while(returnedState != null) {
+							taskState.setWaitState(returnedState);
+							
+							String newHandlerName = ENTERED_EVENT_NAME;
+			
+							// fix this, I think the signature is requiring a perfect match...
+							returnedState = invokeHandler(newHandlerName, new Class[] {executionClass}, new Object[] {taskState}, false );
+						}
+						
+						retBuffer[0] = taskState.getWaitState();
+					}
+				};
 				
-				// if we got a new state
-				while(returnedState != null) {
-					taskState.setWaitState(returnedState);
-					
-					String newHandlerName = ENTERED_EVENT_NAME;
-	
-					// fix this, I think the signature is requiring a perfect match...
-					returnedState = invokeHandler(newHandlerName, new Class[] {executionClass}, new Object[] {taskState}, false );
-				}
+				signalInterceptor.intercept(cont);
 				
-				return taskState.getWaitState();
+				return retBuffer[0];
 			}
 		};
 
