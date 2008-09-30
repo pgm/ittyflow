@@ -1,46 +1,63 @@
 package com.github.ittyflow;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import net.sf.cglib.proxy.Enhancer;
+
 import com.github.ittyflow.annotations.AbstractEvent;
 
-public class Workflow<W,T> {
+public class Workflow<W extends Enum<W>,T> {
 	public static final String ENTERED_EVENT_NAME = "entered";
-	
-	final Class<T> transitionClass;
-	final Class<? extends Execution<W>> executionClass;
-	final Class<?> waitStateClass;
-	final W waitStates[];
-	final Set<W> undefinedWaitStates = new HashSet<W>();
+
+	protected final Class<W> waitStateClass;
+	protected final Class<T> transitionClass;
+	protected final Class<? extends Execution<W>> executionClass;
+	protected final W waitStates[];
+	protected final Set<W> undefinedWaitStates = new HashSet<W>();
 	
 	protected Map<String, Method> allMethodsByName = new HashMap<String, Method>();
 	protected Map<String,W> stateByName = new HashMap<String, W>();
 	protected Map<W, TransitionDispatch<T>> dispatchPerState = new HashMap<W, TransitionDispatch<T>>();
 
-	public Workflow(Class<? extends Execution<W>> executionClass, Class<T> transitionClass, W [] waitStates) {
-		for(W waitState : waitStates) {
-			this.undefinedWaitStates.add(waitState);
+	protected Interceptor signalInterceptor = new Interceptor() {
+		public void intercept(Runnable continuation) {
+			continuation.run();
 		}
-		
-		this.waitStates = waitStates;
+	};
+
+	public Workflow(Class<? extends Execution<W>> executionClass, Class<T> transitionClass) {
 		this.transitionClass = transitionClass;
 		this.executionClass = executionClass;
 		
-		buildStateIndex();
-		
 		try {
-			this.waitStateClass = executionClass.getMethod("getWaitState").getReturnType();
+			this.waitStateClass = (Class<W>)executionClass.getMethod("getWaitState").getReturnType();
 		} catch (Exception ex) {
 			throw new RuntimeException("Could not get the return type of getWaitState from the class "+executionClass.getName(), ex);
 		}
+
+		// use reflection to call the static "values" method on the enumeration class
+		Method valuesMethod;
+		try {
+			valuesMethod = this.waitStateClass.getMethod("values");
+			this.waitStates = (W[])valuesMethod.invoke(null);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+
+		// now add these states to the list of states not yet associated with a listener
+		for(W waitState : this.waitStates) {
+			this.undefinedWaitStates.add(waitState);
+		}
+
+		buildStateIndex();
 		
 		for(Method method : this.transitionClass.getMethods()) {
 			// make sure the signature is right for an event
@@ -184,15 +201,19 @@ public class Workflow<W,T> {
 	public Collection<W> getStates() {
 		return dispatchPerState.keySet();
 	}
-	
-	@SuppressWarnings(value={"unchecked"})
-	public T signal(final Execution<W> taskState) {
+
+	public void validate()
+	{
 		// check to make sure the definition of this workflow is complete
 		if(this.undefinedWaitStates.size() > 0) {
 			throw new RuntimeException("Workflow definition is incomplete.  The following states are undefined: "+this.undefinedWaitStates+".  There should be a call to addTerminalState() or addListener() for each state.");
 		}
+	}
+	
+	@SuppressWarnings(value={"unchecked"})
+	public T signal(final Execution<W> taskState) {
 
-		InvocationHandler handler = new InvocationHandler() {
+		net.sf.cglib.proxy.InvocationHandler handler = new net.sf.cglib.proxy.InvocationHandler() {
 			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) {
 				final W state = taskState.getWaitState();
 				
@@ -212,26 +233,25 @@ public class Workflow<W,T> {
 				
 				final Object _target = transitionMethod.getTarget();
 				final Object [] _parameters = parameters;
-				final Object [] retResult = new Object[1];
+				Object retResult = null;
 				
-				Runnable cont = new Runnable() {
-					public void run() {
-						try {
-							retResult[0] = transitionMethod.getMethod().invoke(_target, _parameters);
-						} catch (Exception ex) {
-							throw new RuntimeException("Could not execute "+transitionMethod+". (current state = "+state+")", ex);
-						}
-					}
-				};
+				try {
+					retResult = transitionMethod.getMethod().invoke(_target, _parameters);
+				} catch (Exception ex) {
+					throw new RuntimeException("Could not execute "+transitionMethod+". (current state = "+state+")", ex);
+				}
 				
-				// execute signal within interceptors
-				cont.run();
-				
-				return (W)retResult[0];
+				return (W)retResult;
 			}
 			
 			public Object invoke(final Object proxy, final Method method, final Object[] args)
 					throws Throwable {
+
+				if(args.length == 0)
+				{
+					throw new RuntimeException("method "+method+" must take at least one parameter");
+				}
+				
 				final Object retBuffer[] = new Object[1];
 				
 				if ( args[0] != null ) {
@@ -265,7 +285,7 @@ public class Workflow<W,T> {
 			}
 		};
 
-		T newProxyInstance = (T) Proxy.newProxyInstance(transitionClass.getClassLoader(), new Class[] {transitionClass}, handler );
+		T newProxyInstance = (T) Enhancer.create(transitionClass, new Class[]{}, handler);
 
 		return newProxyInstance;
 	}
@@ -282,6 +302,11 @@ public class Workflow<W,T> {
 		throw new RuntimeException("unimp");
 	}
 	
+	/**
+	 * Add an interceptor which is invoked around the the execution of the transition handler
+	 * 
+	 * @param interceptor
+	 */
 	public void addInterceptor(final Interceptor interceptor) {
 		final Interceptor innerInterceptor = signalInterceptor;
 		
@@ -297,10 +322,30 @@ public class Workflow<W,T> {
 		};
 	}
 	
-	Interceptor signalInterceptor = new Interceptor() {
-		public void intercept(Runnable continuation) {
-			continuation.run();
+	protected void setupNonterminalStates() {
+		Class<?> workflowClass = this.getClass();
+		Field fields[] = workflowClass.getFields();
+		for(Field field : fields)
+		{
+			if(this.transitionClass.isAssignableFrom(field.getType())) {
+				W state = Enum.valueOf(waitStateClass, field.getName());
+				if(state == null) {
+					throw new RuntimeException("could not find state with name "+field.getName());
+				}
+				
+				T transitionSet;
+				try {
+					transitionSet = (T)field.get(this);
+				} catch (IllegalArgumentException e) {
+					throw new RuntimeException(e);
+				} catch (IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}
+				this.addListener(state, transitionSet);
+			}
 		}
 		
-	};
+		validate();
+	}
+	
 }

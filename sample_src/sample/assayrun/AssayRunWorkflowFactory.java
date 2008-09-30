@@ -6,7 +6,7 @@ public class AssayRunWorkflowFactory {
 	
 	public static Workflow<AssayRunState, ITransitions> makeWorkflow() {
 		Workflow<AssayRunState, ITransitions> workflow = 
-			new Workflow<AssayRunState, ITransitions>(AssayRun.class, ITransitions.class, AssayRunState.values());
+			new Workflow<AssayRunState, ITransitions>(AssayRun.class, ITransitions.class);
 		
 		workflow.addListener(AssayRunState.Waiting_For_Map_Groups, new Transitions() {
 			public AssayRunState userSelectedPlateMaps(AssayRun assayRun, 

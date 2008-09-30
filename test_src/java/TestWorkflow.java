@@ -13,76 +13,69 @@ import com.github.ittyflow.annotations.AbstractEvent;
 
 public class TestWorkflow {
 	
-	static final String START = "start";
-	static final String STOP = "stop";
-	static final String MIDDLE = "middle";
-	
-	public interface ITransitions {
-		public String next(State state);
-		public String entered(State state);
+	public static enum Status {
+		START, STOP, MIDDLE;
 	}
 	
-	static public class Transitions implements ITransitions
+	static public class Transitions
 	{
-		@AbstractEvent
-		public String next(State state) {
+		public Status next(State state) {
 			throw new InvalidEvent();
 		}
 
-		@AbstractEvent
-		public String entered(State state) {
-			throw new InvalidEvent();
+		public Status entered(State state) {
+			return null;
 		}
 	}
 
-	public class State implements Execution<String> {
-		String waitState = START;
+	public class State implements Execution<Status> {
+		Status waitState = Status.START;
 		
-		public String getWaitState() {
+		public Status getWaitState() {
 			return waitState;
 		}
 
-		public void setWaitState(String state) {
+		public void setWaitState(Status state) {
 			list.add("setWaitState");
 			this.waitState = state;
 		}
 		
 		public List list;
 	}
+
+
+	public static class ThisWorkflow extends Workflow<Status,Transitions>
+	{
+		public Transitions START = new Transitions(){
+			@Override
+			public Status next(State state) {
+				state.list.add("inNext");
+				return Status.MIDDLE;
+			}
+		};
+		
+		public Transitions MIDDLE = new Transitions(){
+			@Override
+			public Status entered(State state) {
+				state.list.add("inEntered");
+				return Status.STOP;
+			}
+		};
+
+		public ThisWorkflow() 
+		{
+			super(State.class,Transitions.class);			
+			this.addTerminalState(Status.STOP);
+			this.setupNonterminalStates();
+		}
+	};
 	
 	@Test
 	public void testInterceptor() {
 		final List list = new ArrayList();
 
-		Workflow<String,ITransitions> workflow = new Workflow<String,ITransitions>(State.class,
-				ITransitions.class, new String[] {START, STOP});
-
-		workflow.addListener(START, new Transitions(){
-
-			/* (non-Javadoc)
-			 * @see TestWorkflow.Transitions#next(TestWorkflow.State)
-			 */
-			@Override
-			public String next(State state) {
-				list.add("inNext");
-				return MIDDLE;
-			}
-		});
-
-		workflow.addListener(MIDDLE, new Transitions(){
-
-			/* (non-Javadoc)
-			 * @see TestWorkflow.Transitions#next(TestWorkflow.State)
-			 */
-			@Override
-			public String entered(State state) {
-				list.add("inEntered");
-				return STOP;
-			}
-		});
+		ThisWorkflow workflow = new ThisWorkflow();
 		
-		workflow.addTerminalState(STOP);
-
 		workflow.addInterceptor(new Interceptor() {
 
 			public void intercept(Runnable continuation) {
@@ -96,10 +89,7 @@ public class TestWorkflow {
 		State state = new State();
 		state.list = list;
 		workflow.signal(state).next(null);
-//		assertEquals("[before, inNext, after]", list.toString());
 		assertEquals("[before, inNext, setWaitState, inEntered, setWaitState, after]", list.toString());
-		assertEquals(STOP, state.getWaitState());
+		assertEquals(Status.STOP, state.getWaitState());
 	}
-	
-
 }
