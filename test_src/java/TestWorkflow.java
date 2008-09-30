@@ -9,7 +9,6 @@ import com.github.ittyflow.Execution;
 import com.github.ittyflow.Interceptor;
 import com.github.ittyflow.InvalidEvent;
 import com.github.ittyflow.Workflow;
-import com.github.ittyflow.annotations.AbstractEvent;
 
 public class TestWorkflow {
 	

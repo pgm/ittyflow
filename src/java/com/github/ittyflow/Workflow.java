@@ -2,7 +2,6 @@ package com.github.ittyflow;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 
 import net.sf.cglib.proxy.Enhancer;
-
-import com.github.ittyflow.annotations.AbstractEvent;
 
 public class Workflow<W extends Enum<W>,T> {
 	public static final String ENTERED_EVENT_NAME = "entered";
@@ -157,9 +154,6 @@ public class Workflow<W extends Enum<W>,T> {
 
 		while(clazz != null && !clazz.equals(transitionClass)) {
 			for(Method method : clazz.getMethods()) {
-				// skip if this is marked as abstract
-				if (method.getAnnotation(AbstractEvent.class) != null)
-					continue;
 				
 				String methodName = method.getName();
 	
