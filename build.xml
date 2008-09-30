@@ -20,6 +20,9 @@
 	<jar basedir="build/classes" destfile="build/ittyflow.jar">	
 		<include name="**/*"/>			
 		<exclude name="**/test/**/*"/>
+		<exclude name="sample/**/*"/>
+		<exclude name="sample"/>
+		<exclude name="tests/**/*"/>
 	</jar>	
 </target>
 

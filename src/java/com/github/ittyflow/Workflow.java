@@ -154,7 +154,6 @@ public class Workflow<W extends Enum<W>,T> {
 
 		while(clazz != null && !clazz.equals(transitionClass)) {
 			for(Method method : clazz.getMethods()) {
-				
 				String methodName = method.getName();
 	
 				// if the method is also in the base class, then we 
