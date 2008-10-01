@@ -134,6 +134,10 @@ public class Workflow<W extends Enum<W>,T> {
 		public Collection<TargetedMethod<T>> getTransitions() {
 			return transitions.values();
 		}
+		
+		public Set<String> getMethodNames() {
+			return transitions.keySet();
+		}
 	}
 	
 	public Collection<TargetedMethod<T>> getTransitionsForState(W state) {
@@ -218,7 +222,18 @@ public class Workflow<W extends Enum<W>,T> {
 				final TargetedMethod transitionMethod = dispatch.getMethod(methodName);
 				if(transitionMethod == null) {
 					if(mustExist) {
-						throw new RuntimeException("could not find "+methodName+" with parameters "+parameterTypes);
+						StringBuilder builder = new StringBuilder();
+						builder.append("(current state = ");
+						builder.append(state.toString());
+						builder.append(") could not find ");
+						builder.append(methodName);
+						builder.append(" with parameters ");
+						for(Class<?> c : parameterTypes) {
+							builder.append(c.toString());
+							builder.append(" ");
+						}
+						builder.append(" -- All known methods are "+dispatch.getMethodNames());
+						throw new RuntimeException(builder.toString());
 					} else {
 						return null;
 					}
