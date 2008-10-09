@@ -2,6 +2,7 @@ package com.github.ittyflow;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
@@ -243,11 +244,16 @@ public class Workflow<W extends Enum<W>,T> {
 				final Object [] _parameters = parameters;
 				Object retResult = null;
 				
-				try {
-					retResult = transitionMethod.getMethod().invoke(_target, _parameters);
-				} catch (Exception ex) {
-					throw new RuntimeException("Could not execute "+transitionMethod+". (current state = "+state+")", ex);
-				}
+					try {
+						retResult = transitionMethod.getMethod().invoke(_target, _parameters);
+					} catch (IllegalArgumentException e) {
+						throw new RuntimeException("current state = "+state+", transition = "+methodName, e);
+					} catch (IllegalAccessException e) {
+						throw new RuntimeException("current state = "+state+", transition = "+methodName, e);
+					} catch (InvocationTargetException e) {
+						// if we got an invocation failure, unwrap the exception and pass back up the cause
+						throw new TransitionFailedException(state, methodName, e.getTargetException());
+					}
 				
 				return (W)retResult;
 			}
