@@ -26,7 +26,7 @@ public class Workflow<W extends Enum<W>,T> {
 	protected Map<W, TransitionDispatch<T>> dispatchPerState = new HashMap<W, TransitionDispatch<T>>();
 
 	protected Interceptor signalInterceptor = new Interceptor() {
-		public void intercept(Runnable continuation) {
+		public void intercept(RunnableWithThrows continuation) throws Throwable {
 			continuation.run();
 		}
 	};
@@ -212,7 +212,7 @@ public class Workflow<W extends Enum<W>,T> {
 	public T signal(final Execution<W> taskState) {
 
 		net.sf.cglib.proxy.InvocationHandler handler = new net.sf.cglib.proxy.InvocationHandler() {
-			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) {
+			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) throws Throwable {
 				final W state = taskState.getWaitState();
 				
 				if(state == null) {
@@ -252,7 +252,20 @@ public class Workflow<W extends Enum<W>,T> {
 						throw new RuntimeException("current state = "+state+", transition = "+methodName, e);
 					} catch (InvocationTargetException e) {
 						// if we got an invocation failure, unwrap the exception and pass back up the cause
-						throw new TransitionFailedException(state, methodName, e.getTargetException());
+						Throwable targetException = e.getTargetException();
+						TransitionFailedException transitionFailedException = new TransitionFailedException(state, methodName, targetException);
+						
+						// now before we throw our new exception, was the target exception one that was aware of ittyflow?
+						if(targetException instanceof TransitionAwareException) {
+							// if so, then store the failure information on it, and rethrow the original.
+							((TransitionAwareException)targetException).setTransitionFailure( transitionFailedException );
+							throw targetException;
+						} else {
+							// otherwise, throw the TransitionFailedException which has more useful information on it
+							// This will catch all the normal runtime exceptions such as null ptr, array bounds, etc...
+							// and provide useful diagnostic information about the state of the execution for those.
+							throw transitionFailedException;
+						}
 					}
 				
 				return (W)retResult;
@@ -272,8 +285,8 @@ public class Workflow<W extends Enum<W>,T> {
 					throw new RuntimeException("You cannot provide a state to modify.  This will be automatically populated.  You must provide null as the first argument");
 				}
 
-				Runnable cont = new Runnable() {
-					public void run() {
+				RunnableWithThrows cont = new RunnableWithThrows() {
+					public void run() throws Throwable {
 						// copy the task state as the first parameter
 						args[0] = taskState;
 
@@ -325,9 +338,9 @@ public class Workflow<W extends Enum<W>,T> {
 		final Interceptor innerInterceptor = signalInterceptor;
 		
 		signalInterceptor = new Interceptor() {
-			public void intercept(final Runnable continuation) {
-				Runnable innerRunnable = new Runnable() {
-					public void run() {
+			public void intercept(final RunnableWithThrows continuation) throws Throwable {
+				RunnableWithThrows innerRunnable = new RunnableWithThrows() {
+					public void run() throws Throwable {
 						innerInterceptor.intercept(continuation);
 					}
 				};
