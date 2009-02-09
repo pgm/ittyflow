@@ -9,6 +9,7 @@ import org.junit.Test;
 import com.github.ittyflow.Execution;
 import com.github.ittyflow.Interceptor;
 import com.github.ittyflow.InvalidEvent;
+import com.github.ittyflow.RunnableWithThrows;
 import com.github.ittyflow.Workflow;
 
 public class TestWorkflow {
@@ -22,13 +23,18 @@ public class TestWorkflow {
 		public Status next(State state) {
 			throw new InvalidEvent();
 		}
+		
+		public Status differentEvent(State state)
+		{
+			throw new InvalidEvent();
+		}
 
 		public Status entered(State state) {
 			return null;
 		}
 	}
 
-	public class State implements Execution<Status> {
+	public static class State implements Execution<Status> {
 		Status waitState = Status.START;
 		
 		public Status getWaitState() {
@@ -77,8 +83,8 @@ public class TestWorkflow {
 		ThisWorkflow workflow = new ThisWorkflow();
 		
 		workflow.addInterceptor(new Interceptor() {
-
-			public void intercept(Runnable continuation) {
+			public void intercept(RunnableWithThrows continuation)
+					throws Throwable {
 				list.add("before");
 				continuation.run();
 				list.add("after");

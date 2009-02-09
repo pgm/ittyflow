@@ -1,5 +1,3 @@
-----------------------------------------------------------------------------
-
 ittyFlow is a simple, and experimental framework for creating workflows 
 and/or "pageflows" in Java.   It was developed to solve similar problems as  
 as jBPM and Spring Web Flow.   However, this was an experiment to achieve

@@ -20,6 +20,7 @@ public class Workflow<W extends Enum<W>,T> {
 	protected final Class<? extends Execution<W>> executionClass;
 	protected final W waitStates[];
 	protected final Set<W> undefinedWaitStates = new HashSet<W>();
+	protected final Set<W> terminalStates = new HashSet<W>();
 	
 	protected Map<String, Method> allMethodsByName = new HashMap<String, Method>();
 	protected Map<String,W> stateByName = new HashMap<String, W>();
@@ -147,10 +148,28 @@ public class Workflow<W extends Enum<W>,T> {
 	
 	public void addTerminalState(W state) {
 		this.undefinedWaitStates.remove(state);
+		this.terminalStates.add(state);
 
 		dispatchPerState.put(state, new TransitionDispatch<T>());
 	}
 
+	/**
+	 * Add a terminal state which allows some events to fire.  The methods 
+	 * will execute, however, they must not change the state (they must return null).
+	 * 
+	 * If there is a method that wants to return a value other then null, that implies this
+	 * is not a terminal state, and you should use addListener instead.
+	 * 
+	 * @param state
+	 * @param transitionSet
+	 */
+	public void addTerminalState(W state, T transitionSet) {
+		this.undefinedWaitStates.remove(state);
+		this.terminalStates.add(state);
+
+		addListener(state, transitionSet);
+	}
+	
 	public void addListener(W state, T transitionSet) {
 		this.undefinedWaitStates.remove(state);
 		
@@ -212,7 +231,7 @@ public class Workflow<W extends Enum<W>,T> {
 	public T signal(final Execution<W> taskState) {
 
 		net.sf.cglib.proxy.InvocationHandler handler = new net.sf.cglib.proxy.InvocationHandler() {
-			public W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) throws Throwable {
+			protected W invokeHandler(String methodName, Class<?> parameterTypes[], Object [] parameters, boolean mustExist) throws Throwable {
 				final W state = taskState.getWaitState();
 				
 				if(state == null) {
@@ -289,8 +308,17 @@ public class Workflow<W extends Enum<W>,T> {
 					public void run() throws Throwable {
 						// copy the task state as the first parameter
 						args[0] = taskState;
-
+						
+						final W initialState = taskState.getWaitState();
 						W returnedState = invokeHandler(method.getName(), method.getParameterTypes(), args, true);
+						
+						if(terminalStates.contains(initialState))
+						{
+							if(returnedState != null)
+							{
+								throw new RuntimeException("All events fired in a terminal state must return null.  (state: "+initialState+", event "+method.getName()+" returned "+returnedState);
+							}
+						}
 						
 						// if we got a new state
 						while(returnedState != null) {
